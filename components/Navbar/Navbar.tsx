@@ -20,7 +20,7 @@ export default function Navbar() {
                 <div className="flex items-center gap-3">
                     <Link
                         href="/conta"
-                        className="w-10 h-10 flex items-center justify-center bg-[#ffffff] text-[#0d8ef0    ] rounded-full cursor-pointer"
+                        className="w-10 h-10 flex items-center justify-center bg-[#ffffff] text-[#0d8ef0] rounded-full cursor-pointer"
                         aria-label="Conta"
                     >
                         <FiUser size={21} />
@@ -28,7 +28,7 @@ export default function Navbar() {
 
                     <button
                         type="button"
-                        className="w-10 h-10 flex items-center justify-center bg-[#ffffff] text-[#0d8ef0    ] rounded-full cursor-pointer"
+                        className="w-10 h-10 flex items-center justify-center bg-[#ffffff] text-[#0d8ef0] rounded-full cursor-pointer"
                         aria-label="Sair"
                     >
                         <FiLogOut size={21} />

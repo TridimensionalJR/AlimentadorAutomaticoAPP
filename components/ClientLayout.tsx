@@ -40,7 +40,7 @@ export default function ClientLayout({
       </div>
 
       {!hideHeader && (
-        <div className="md:hidden">
+        <div className="">
           <BottomBar />
         </div>
       )}
