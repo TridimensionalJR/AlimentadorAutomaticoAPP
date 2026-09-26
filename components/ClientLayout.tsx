@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation"
 import { useState } from "react"
 
 import Navbar from "./Navbar/Navbar"
+import Header from "./Header/Header"
 import BottomBar from "./BottomBar/bottomBar"
 
 export default function ClientLayout({
@@ -25,9 +26,14 @@ export default function ClientLayout({
     <div className="flex h-screen overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col">
         {!hideHeader && (
-          <header className="sticky top-0 z-30">
-            <Navbar />
-          </header>
+
+          <>
+            <header className="sticky top-0 z-30">
+              <Navbar />
+            </header>
+            <Header />
+          </>
+         
         )}
 
         <main

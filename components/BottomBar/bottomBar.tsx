@@ -14,8 +14,8 @@ const items = [
         icon: FiHome,
     },
     {
-        href: "/conta",
-        label: "Conta",
+        href: "/alimentadores",
+        label: "Alimentador",
         icon: GiDogHouse,
     },
 ];
