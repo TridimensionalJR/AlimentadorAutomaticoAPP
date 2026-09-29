@@ -1,6 +1,8 @@
 "use client"
 
-import { ReactNode } from "react"
+import { ReactNode, useMemo, useState } from "react"
+import { z } from "zod"
+
 import { FiCheck, FiEdit3, FiEye, FiSave } from "react-icons/fi"
 import { toast } from "react-toastify"
 
@@ -42,6 +44,7 @@ type Field = {
   required?: boolean
   disabled?: boolean
   options?: Option[]
+  validation?: z.ZodType
   render?: (
     value: unknown,
     setValue: (value: unknown) => void
@@ -74,13 +77,118 @@ export default function Form({
   children,
 }: FormProps) {
   const readonly = mode === "view"
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const schema = useMemo(() => {
+    const shape: Record<string, z.ZodType> = {}
+
+    fields.forEach((field) => {
+      if (field.validation) {
+        shape[field.name] = field.validation
+        return
+      }
+
+      let fieldSchema: z.ZodType
+
+      switch (field.type) {
+        case "number":
+          fieldSchema = z.coerce.number({
+            message: `${field.label} deve ser um número válido.`,
+          })
+          break
+
+        case "switch":
+          fieldSchema = z.boolean()
+          break
+
+        default:
+          fieldSchema = z.string()
+      }
+
+      if (field.required) {
+        if (field.type === "switch") {
+          fieldSchema = z.boolean()
+        } else if (field.type === "number") {
+          fieldSchema = z.coerce
+            .number({
+              message: `${field.label} deve ser um número válido.`,
+            })
+            .refine((value) => !Number.isNaN(value), {
+              message: `${field.label} é obrigatório.`,
+            })
+        } else {
+          fieldSchema = z.string().trim().min(1, {
+            message: `${field.label} é obrigatório.`,
+          })
+        }
+      } else {
+        if (field.type !== "switch") {
+          fieldSchema = fieldSchema.optional()
+        }
+      }
+
+      if (field.type === "email" && !field.validation) {
+        fieldSchema = field.required
+          ? z
+              .string()
+              .trim()
+              .min(1, `${field.label} é obrigatório.`)
+              .email("Digite um e-mail válido.")
+          : z
+              .string()
+              .trim()
+              .email("Digite um e-mail válido.")
+              .optional()
+      }
+
+      shape[field.name] = fieldSchema
+    })
+
+    return z.object(shape)
+  }, [fields])
 
   const handleChange = (name: string, value: unknown) => {
-    if (!readonly) onChange(name, value)
+    if (readonly) return
+
+    onChange(name, value)
+
+    if (errors[name]) {
+      setErrors((current) => {
+        const next = { ...current }
+        delete next[name]
+        return next
+      })
+    }
   }
 
   const handleSubmit = async () => {
     if (!onSubmit) return
+
+    const result = schema.safeParse(values)
+
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {}
+
+      result.error.issues.forEach((issue) => {
+        const fieldName = issue.path[0]
+
+        if (typeof fieldName === "string" && !fieldErrors[fieldName]) {
+          fieldErrors[fieldName] = issue.message
+        }
+      })
+
+      setErrors(fieldErrors)
+
+      const firstError = Object.values(fieldErrors)[0]
+
+      if (firstError) {
+        toast.error(firstError)
+      }
+
+      return
+    }
+
+    setErrors({})
 
     try {
       const message = await onSubmit()
@@ -105,6 +213,7 @@ export default function Form({
   const renderField = (field: Field) => {
     const value = values[field.name]
     const disabled = readonly || field.disabled
+    const error = errors[field.name]
 
     if (field.type === "custom" && field.render) {
       return field.render(value, (newValue) =>
@@ -115,13 +224,16 @@ export default function Form({
     if (field.type === "textarea") {
       return (
         <Textarea
+          id={field.name}
           value={String(value ?? "")}
           placeholder={field.placeholder}
           disabled={disabled}
           onChange={(event) =>
             handleChange(field.name, event.target.value)
           }
-          className="min-h-32 resize-y rounded-md px-4 py-3 text-sm"
+          className={`min-h-32 resize-y rounded-md px-4 py-3 text-sm ${
+            error ? "border-red-500 focus-visible:ring-red-500" : ""
+          }`}
         />
       )
     }
@@ -135,7 +247,12 @@ export default function Form({
             handleChange(field.name, newValue)
           }
         >
-          <SelectTrigger className="h-12 rounded-md px-4">
+          <SelectTrigger
+            id={field.name}
+            className={`h-12 rounded-md px-4 ${
+              error ? "border-red-500 focus:ring-red-500" : ""
+            }`}
+          >
             <SelectValue
               placeholder={field.placeholder || "Selecione"}
             />
@@ -179,7 +296,9 @@ export default function Form({
         onChange={(event) =>
           handleChange(field.name, event.target.value)
         }
-        className="h-12 rounded-md px-4 text-sm"
+        className={`h-12 rounded-md px-4 text-sm ${
+          error ? "border-red-500 focus-visible:ring-red-500" : ""
+        }`}
       />
     )
   }
@@ -236,11 +355,15 @@ export default function Form({
 
               {renderField(field)}
 
-              {field.description && (
+              {errors[field.name] ? (
+                <p className="text-xs text-red-500">
+                  {errors[field.name]}
+                </p>
+              ) : field.description ? (
                 <p className="text-xs text-muted-foreground">
                   {field.description}
                 </p>
-              )}
+              ) : null}
             </div>
           </div>
         ))}
