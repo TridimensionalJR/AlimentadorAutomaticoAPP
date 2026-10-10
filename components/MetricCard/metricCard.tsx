@@ -1,7 +1,12 @@
 "use client"
 
 import { ReactNode } from "react"
-import { FiArrowDown, FiArrowUp, FiMinus } from "react-icons/fi"
+
+import {
+  FiArrowDown,
+  FiArrowUp,
+  FiMinus,
+} from "react-icons/fi"
 
 import { cn } from "@/lib/utils"
 
@@ -31,64 +36,66 @@ export default function MetricCard({
   return (
     <div
       className={cn(
-        "rounded-md border bg-background p-5",
+        "min-h-28 rounded-xl bg-muted/50 px-4 py-3",
         className
       )}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-muted-foreground">
-            {title}
-          </p>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          {icon && (
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background">
+              {icon}
+            </div>
+          )}
 
-          <p className="mt-2 text-2xl font-semibold tracking-tight">
-            {value}
+          <p className="truncate text-xs font-medium text-muted-foreground">
+            {title}
           </p>
         </div>
 
-        {icon && (
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted/40">
-            {icon}
+        <p className="mt-2 text-2xl font-semibold tracking-tight">
+          {value}
+        </p>
+
+        {(description || hasTrend) && (
+          <div className="mt-0.5 flex items-center gap-1.5 text-[11px]">
+            {hasTrend && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-0.5 font-medium",
+                  positive && "text-emerald-600",
+                  negative && "text-red-600",
+                  !positive &&
+                    !negative &&
+                    "text-muted-foreground"
+                )}
+              >
+                {positive ? (
+                  <FiArrowUp className="size-3" />
+                ) : negative ? (
+                  <FiArrowDown className="size-3" />
+                ) : (
+                  <FiMinus className="size-3" />
+                )}
+
+                {Math.abs(trend)}%
+              </span>
+            )}
+
+            {trendLabel && (
+              <span className="truncate text-muted-foreground">
+                {trendLabel}
+              </span>
+            )}
+
+            {description && !trendLabel && (
+              <span className="truncate text-muted-foreground">
+                {description}
+              </span>
+            )}
           </div>
         )}
       </div>
-
-      {(description || hasTrend) && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-          {hasTrend && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 font-medium",
-                positive && "text-emerald-600",
-                negative && "text-red-600",
-                !positive && !negative && "text-muted-foreground"
-              )}
-            >
-              {positive ? (
-                <FiArrowUp className="size-3.5" />
-              ) : negative ? (
-                <FiArrowDown className="size-3.5" />
-              ) : (
-                <FiMinus className="size-3.5" />
-              )}
-
-              {Math.abs(trend)}%
-            </span>
-          )}
-
-          {trendLabel && (
-            <span className="text-muted-foreground">
-              {trendLabel}
-            </span>
-          )}
-
-          {description && !trendLabel && (
-            <span className="text-muted-foreground">
-              {description}
-            </span>
-          )}
-        </div>
-      )}
     </div>
   )
 }

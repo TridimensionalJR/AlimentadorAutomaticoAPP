@@ -22,7 +22,10 @@ import { cn } from "@/lib/utils"
 
 type ChartType = "bar" | "line" | "area" | "pie" | "scatter"
 
-type ChartData = Record<string, string | number | boolean | null>
+type ChartData = Record<
+  string,
+  string | number | boolean | null
+>
 
 type ChartSeries = {
   dataKey: string
@@ -47,6 +50,19 @@ type ChartProps = {
   emptyMessage?: string
 }
 
+const chartAxis = {
+  fontSize: 11,
+  fill: "hsl(var(--muted-foreground))",
+}
+
+const tooltipStyle = {
+  borderRadius: "12px",
+  border: "1px solid hsl(var(--border))",
+  background: "hsl(var(--background))",
+  boxShadow: "0 4px 12px rgb(0 0 0 / 0.06)",
+  fontSize: "12px",
+}
+
 export default function Chart({
   type = "line",
   data,
@@ -66,7 +82,7 @@ export default function Chart({
     return (
       <div
         className={cn(
-          "flex w-full items-center justify-center rounded-md border text-sm text-muted-foreground",
+          "flex w-full items-center justify-center rounded-xl bg-muted/50 text-sm text-muted-foreground",
           className
         )}
         style={{ height }}
@@ -77,7 +93,12 @@ export default function Chart({
   }
 
   const grid = showGrid ? (
-    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+    <CartesianGrid
+      strokeDasharray="3 6"
+      vertical={false}
+      stroke="hsl(var(--border))"
+      strokeOpacity={0.45}
+    />
   ) : null
 
   const axes = (
@@ -88,6 +109,7 @@ export default function Chart({
           axisLine={false}
           tickLine={false}
           tickMargin={10}
+          tick={chartAxis}
         />
       )}
 
@@ -96,19 +118,42 @@ export default function Chart({
           axisLine={false}
           tickLine={false}
           tickMargin={10}
+          tick={chartAxis}
         />
       )}
     </>
   )
 
-  const tooltip = showTooltip ? <Tooltip /> : null
-  const legend = showLegend ? <Legend /> : null
+  const tooltip = showTooltip ? (
+    <Tooltip
+      contentStyle={tooltipStyle}
+      cursor={{
+        stroke: "hsl(var(--border))",
+        strokeWidth: 1,
+      }}
+    />
+  ) : null
+
+  const legend = showLegend ? (
+    <Legend
+      wrapperStyle={{
+        fontSize: "12px",
+        paddingTop: "8px",
+      }}
+    />
+  ) : null
 
   if (type === "pie") {
     const valueKey = series[0]?.dataKey || "value"
 
     return (
-      <div className={cn("w-full", className)} style={{ height }}>
+      <div
+        className={cn(
+          "w-full rounded-xl bg-muted/50 p-2",
+          className
+        )}
+        style={{ height }}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             {tooltip}
@@ -120,13 +165,17 @@ export default function Chart({
               nameKey={xKey}
               cx="50%"
               cy="50%"
-              outerRadius="75%"
+              outerRadius="72%"
+              innerRadius="42%"
+              paddingAngle={3}
+              strokeWidth={0}
               isAnimationActive={animated}
             >
               {data.map((_, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={`hsl(${(index * 47) % 360} 70% 50%)`}
+                  stroke="none"
                 />
               ))}
             </Pie>
@@ -138,7 +187,13 @@ export default function Chart({
 
   if (type === "scatter") {
     return (
-      <div className={cn("w-full", className)} style={{ height }}>
+      <div
+        className={cn(
+          "w-full rounded-xl bg-muted/50 p-2",
+          className
+        )}
+        style={{ height }}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart>
             {grid}
@@ -164,9 +219,23 @@ export default function Chart({
 
   if (type === "bar") {
     return (
-      <div className={cn("w-full", className)} style={{ height }}>
+      <div
+        className={cn(
+          "w-full rounded-xl bg-muted/50 p-2",
+          className
+        )}
+        style={{ height }}
+      >
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data}>
+          <BarChart
+            data={data}
+            margin={{
+              top: 8,
+              right: 8,
+              bottom: 4,
+              left: 0,
+            }}
+          >
             {grid}
             {tooltip}
             {legend}
@@ -179,7 +248,7 @@ export default function Chart({
                 name={item.label || item.dataKey}
                 fill={item.color}
                 stackId={item.stackId}
-                radius={[4, 4, 0, 0]}
+                radius={[6, 6, 2, 2]}
                 isAnimationActive={animated}
               />
             ))}
@@ -191,9 +260,23 @@ export default function Chart({
 
   if (type === "area") {
     return (
-      <div className={cn("w-full", className)} style={{ height }}>
+      <div
+        className={cn(
+          "w-full rounded-xl bg-muted/50 p-2",
+          className
+        )}
+        style={{ height }}
+      >
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
+          <LineChart
+            data={data}
+            margin={{
+              top: 12,
+              right: 8,
+              bottom: 4,
+              left: 0,
+            }}
+          >
             {grid}
             {tooltip}
             {legend}
@@ -202,14 +285,20 @@ export default function Chart({
             {series.map((item) => (
               <Line
                 key={item.dataKey}
-                type="monotone"
+                type="natural"
                 dataKey={item.dataKey}
                 name={item.label || item.dataKey}
                 stroke={item.color}
-                strokeWidth={2}
+                strokeWidth={4}
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 fill={item.color}
-                fillOpacity={0.1}
+                fillOpacity={0.06}
                 dot={false}
+                activeDot={{
+                  r: 6,
+                  strokeWidth: 0,
+                }}
                 isAnimationActive={animated}
               />
             ))}
@@ -220,9 +309,23 @@ export default function Chart({
   }
 
   return (
-    <div className={cn("w-full", className)} style={{ height }}>
+    <div
+      className={cn(
+        "w-full rounded-xl bg-muted/50 p-2",
+        className
+      )}
+      style={{ height }}
+    >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
+        <LineChart
+          data={data}
+          margin={{
+            top: 12,
+            right: 8,
+            bottom: 4,
+            left: 0,
+          }}
+        >
           {grid}
           {tooltip}
           {legend}
@@ -231,13 +334,18 @@ export default function Chart({
           {series.map((item) => (
             <Line
               key={item.dataKey}
-              type="monotone"
+              type="natural"
               dataKey={item.dataKey}
               name={item.label || item.dataKey}
               stroke={item.color}
-              strokeWidth={2}
+              strokeWidth={4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
               dot={false}
-              activeDot={{ r: 5 }}
+              activeDot={{
+                r: 6,
+                strokeWidth: 0,
+              }}
               isAnimationActive={animated}
             />
           ))}

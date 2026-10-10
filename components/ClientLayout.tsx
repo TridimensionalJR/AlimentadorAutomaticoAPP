@@ -1,55 +1,47 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import { useState } from "react"
 
 import Navbar from "./Navbar/Navbar"
 import Header from "./Header/Header"
 import BottomBar from "./BottomBar/bottomBar"
 
 export default function ClientLayout({
-  children,
+    children,
 }: {
-  children: React.ReactNode
+    children: React.ReactNode
 }) {
-  const pathname = usePathname()
+    const pathname = usePathname()
 
-  const publicRoutes = [
-    "/login"
-  ]
+    const publicRoutes = ["/login"]
 
-  const hideHeader = publicRoutes.some((route) =>
-    pathname.startsWith(route)
-  )
+    const hideHeader = publicRoutes.some((route) =>
+        pathname.startsWith(route)
+    )
 
-  return (
-    <div className="flex h-screen overflow-hidden">
-      <div className="flex min-w-0 flex-1 flex-col">
-        {!hideHeader && (
+    return (
+        <div className="flex h-dvh min-h-0 flex-col">
+            {!hideHeader && (
+                <header className="shrink-0">
+                    <Navbar />
+                </header>
+            )}
 
-          <>
-            <header className="sticky top-0 z-30">
-              <Navbar />
-            </header>
-            <Header />
-          </>
-         
-        )}
+            <div className="min-h-0 flex-1">
+                <main className="h-full overflow-y-auto">
+                    <div
+                        className={`mx-auto w-full md:w-[90%] ${
+                            hideHeader ? "" : "pb-14 md:pb-24"
+                        }`}
+                    >
+                        {!hideHeader && <Header />}
 
-        <main
-          className={`flex-1 overflow-y-auto ${
-            hideHeader ? "" : "pb-16 md:pb-0"
-          }`}
-        >
-          {children}
-        </main>
-      </div>
+                        {children}
+                    </div>
+                </main>
+            </div>
 
-      {!hideHeader && (
-        <div className="">
-          <BottomBar />
+            {!hideHeader && <BottomBar />}
         </div>
-      )}
-    </div>
-  )
+    )
 }

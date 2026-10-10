@@ -18,7 +18,7 @@ export default function Header() {
     )?.[1] || "Início"
 
   return (
-    <header className="flex h-24 items-center px-6">
+    <header className="flex h-24 items-center px-6 lg:px-0 mx-auto w-full max-w-4xl">
       <h1 className="text-3xl font-light">{name}</h1>
     </header>
   )
