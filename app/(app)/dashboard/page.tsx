@@ -1,5 +1,7 @@
+
 "use client"
 
+import Image from "next/image"
 import useEmblaCarousel from "embla-carousel-react"
 
 import {
@@ -128,7 +130,22 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div
+      <div className="flex min-h-[55vh] flex-col items-center justify-center gap-5 text-center">
+        <Image
+          src="/assets/dog.webp"
+          alt="Cachorro"
+          width={220}
+          height={220}
+          priority
+          className="h-auto w-full max-w-[220px] max-h-[160px] object-contain"
+        />
+
+        <h1 className="text-lg font-semibold tracking-tight">
+          Dashboard em elaboração
+        </h1>
+      </div>
+
+      {/*<div
         ref={emblaMetricsRef}
         className="w-full overflow-hidden md:overflow-visible"
       >
@@ -222,7 +239,7 @@ export default function Dashboard() {
             ),
           },
         ]}
-      />
+      />*/}
     </div>
   )
 }
