@@ -1,22 +1,84 @@
+
 "use client"
 
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-
-type Feeder = {
-    id: number
-    name: string
-    active: boolean
-}
-
-const feeders: Feeder[] = [
-    { id: 1, name: "Alimentador 01", active: true },
-    { id: 2, name: "Alimentador 02", active: false },
-    { id: 3, name: "Alimentador 03", active: true },
-    { id: 4, name: "Alimentador 04", active: true },
-]
+import { feederService } from "@/services/FeederService"
+import type { Feeder } from "@/types/feeder"
 
 export default function Feeders() {
+    const [feeders, setFeeders] = useState<Feeder[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(false)
+
+    useEffect(() => {
+        let active = true
+
+        async function loadFeeders() {
+            try {
+                const response = await feederService.findAll()
+
+                if (active) setFeeders(response)
+            } catch (err) {
+                console.error("Erro ao buscar alimentadores:", err)
+
+                if (active) setError(true)
+            } finally {
+                if (active) setLoading(false)
+            }
+        }
+
+        loadFeeders()
+
+        return () => {
+            active = false
+        }
+    }, [])
+
+    if (loading) {
+        return (
+            <main className="p-6 lg:p-0 w-full max-w-4xl mx-auto">
+                <div className="flex min-h-[55vh] flex-col items-center justify-center gap-5 text-center">
+                    <p className="text-sm text-muted-foreground">
+                        Procurando seus alimentadores...
+                    </p>
+                </div>
+            </main>
+        )
+    }
+
+    if (error || feeders.length === 0) {
+        return (
+            <main className="p-6 lg:p-0 w-full max-w-4xl mx-auto">
+                <div className="flex min-h-[55vh] flex-col items-center justify-center gap-5 text-center">
+                    <Image
+                        src="/assets/dog.webp"
+                        alt="Cachorro"
+                        width={220}
+                        height={220}
+                        priority
+                        className="h-auto w-full max-w-[220px] max-h-[160px] object-contain"
+                    />
+
+                    <div className="space-y-1">
+                        <h1 className="text-lg font-semibold tracking-tight">
+                            {error
+                                ? "Ops! Não encontramos nossos alimentadores : ("
+                                : "Nenhum alimentador por aqui para nós : ("}
+                        </h1>
+
+                        <p className="text-sm text-muted-foreground">
+                            {error
+                                ? "Não foi possível carregar os alimentadores. Tente novamente mais tarde."
+                                : "Parece que você ainda não cadastrou nenhum alimentador. Que tal adicionar o primeiro?"}
+                        </p>
+                    </div>
+                </div>
+            </main>
+        )
+    }
+
     return (
         <main className="p-6 lg:p-0 w-full max-w-4xl mx-auto">
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2">

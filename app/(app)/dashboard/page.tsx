@@ -1,122 +1,72 @@
-
 "use client"
 
+import { useEffect, useState } from "react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import useEmblaCarousel from "embla-carousel-react"
+import { FiPlus } from "react-icons/fi"
 
-import {
-  FiActivity,
-  FiClock,
-  FiDroplet,
-  FiPlus,
-} from "react-icons/fi"
-
-import Chart from "@/components/Chart/chart"
-import MetricCard from "@/components/MetricCard/metricCard"
-import Table from "@/components/Table/table"
-
-const dosingData = [
-  {
-    id: 1,
-    feeder: "Alimentador 01",
-    quantity: "120 g",
-    date: "29/09/2026",
-    time: "20:00",
-    status: "Programada",
-  },
-  {
-    id: 2,
-    feeder: "Alimentador 02",
-    quantity: "80 g",
-    date: "30/09/2026",
-    time: "07:30",
-    status: "Programada",
-  },
-  {
-    id: 3,
-    feeder: "Alimentador 01",
-    quantity: "120 g",
-    date: "30/09/2026",
-    time: "12:00",
-    status: "Programada",
-  },
-]
-
-const consumptionData = [
-  { name: "Seg", consumo: 620 },
-  { name: "Ter", consumo: 580 },
-  { name: "Qua", consumo: 710 },
-  { name: "Qui", consumo: 650 },
-  { name: "Sex", consumo: 760 },
-  { name: "Sáb", consumo: 690 },
-  { name: "Dom", consumo: 730 },
-]
-
-const feeders = [
-  {
-    id: "01",
-    name: "Alimentador 01",
-    status: "Online",
-    nextDose: "20:00",
-    foodLevel: 78,
-  },
-  {
-    id: "02",
-    name: "Alimentador 02",
-    status: "Online",
-    nextDose: "07:30",
-    foodLevel: 54,
-  },
-  {
-    id: "03",
-    name: "Alimentador 03",
-    status: "Online",
-    nextDose: "18:30",
-    foodLevel: 91,
-  },
-]
+import { feederService } from "@/services/FeederService"
+import type { Feeder } from "@/types/feeder"
 
 export default function Dashboard() {
+  const router = useRouter()
+  const [feeders, setFeeders] = useState<Feeder[]>([])
+  const [loading, setLoading] = useState(true)
+
   const [emblaStoriesRef] = useEmblaCarousel({
     align: "start",
     containScroll: "trimSnaps",
     dragFree: true,
   })
 
-  const [emblaMetricsRef] = useEmblaCarousel({
-    align: "start",
-    containScroll: "trimSnaps",
-  })
+  useEffect(() => {
+    let active = true
+
+    const loadFeeders = async () => {
+      try {
+        const data = await feederService.findAll()
+        if (active) setFeeders(data.filter(feeder => feeder.active))
+      } catch (error) {
+        console.error("Erro ao carregar alimentadores:", error)
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    loadFeeders()
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   return (
     <div className="w-full space-y-6 p-6 lg:p-0 md:p-7 max-w-4xl mx-auto">
-      <div
-        ref={emblaStoriesRef}
-        className="w-full overflow-hidden"
-      >
+      <div ref={emblaStoriesRef} className="w-full overflow-hidden">
         <div className="flex gap-5">
           <button
             type="button"
-            className="group flex shrink-0 flex-col items-center gap-2"
+            onClick={() => router.push("/alimentadores/novo")}
+            className="group flex shrink-0 flex-col items-center gap-2 cursor-pointer"
           >
             <div className="flex size-16 items-center justify-center rounded-full border border-dashed bg-muted/30 transition-colors group-hover:bg-muted">
               <FiPlus className="size-6" />
             </div>
 
-            <span className="text-xs font-medium">
-              Adicionar
-            </span>
+            <span className="text-xs font-medium">Adicionar</span>
           </button>
 
-          {feeders.map((feeder) => (
+          {!loading && feeders.map(feeder => (
             <button
               key={feeder.id}
               type="button"
-              className="group flex shrink-0 flex-col items-center gap-2"
+              onClick={() => router.push(`/alimentadores/${feeder.id}`)}
+              className="group flex shrink-0 flex-col items-center gap-2 cursor-pointer"
             >
               <div className="relative flex size-16 items-center justify-center rounded-full border-2 border-primary bg-background p-1">
                 <div className="flex size-full items-center justify-center rounded-full bg-muted text-sm font-semibold">
-                  {feeder.id}
+                  {feeder.name.slice(0, 2).toUpperCase()}
                 </div>
 
                 <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-background bg-emerald-500" />

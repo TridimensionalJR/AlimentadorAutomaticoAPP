@@ -1,7 +1,14 @@
 
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+  useCallback,
+} from "react";
 import { useRouter } from "next/navigation";
 
 import { authService } from "@/services/AuthService";
@@ -22,6 +29,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  const logout = useCallback(() => {
+    authService.logout();
+    setUser(null);
+    router.replace("/login");
+  }, [router]);
+
   useEffect(() => {
     try {
       const token = localStorage.getItem("accessToken");
@@ -31,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(JSON.parse(storedUser) as User);
       } else {
         authService.logout();
+        setUser(null);
       }
     } catch {
       authService.logout();
@@ -46,21 +60,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/alimentadores");
   }
 
-  function logout() {
-    authService.logout();
-    setUser(null);
-    router.replace("/login");
-  }
-
   return (
     <AuthContext.Provider
       value={{
         user,
         loading,
-        isAuthenticated: !!user && !!(
-          typeof window !== "undefined" &&
-          localStorage.getItem("accessToken")
-        ),
+        isAuthenticated:
+          !!user &&
+          !!(
+            typeof window !== "undefined" &&
+            localStorage.getItem("accessToken")
+          ),
         login,
         logout,
       }}

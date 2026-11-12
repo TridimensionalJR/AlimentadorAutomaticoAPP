@@ -1,3 +1,4 @@
+
 import { API } from "./api";
 import type { AuthResponse, LoginRequest } from "@/types/auth";
 
@@ -11,7 +12,6 @@ class AuthService extends API {
 
     localStorage.setItem("accessToken", response.accessToken);
     localStorage.setItem("user", JSON.stringify(response.user));
-
     localStorage.setItem("tokenType", response.tokenType);
 
     return response;
@@ -20,6 +20,7 @@ class AuthService extends API {
   logout(): void {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("user");
+    localStorage.removeItem("tokenType");
   }
 }
 

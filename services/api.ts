@@ -28,18 +28,37 @@ export class API {
     const token = authenticated ? this.getToken() : null;
 
     const headers = new Headers(options.headers);
-    if (!(options.body instanceof FormData) && !headers.has("Content-Type"))
-      headers.set("Content-Type", "application/json");
 
-    if (token) headers.set(
-      "Authorization",
-      `${localStorage.getItem("tokenType") || "Bearer"} ${token}`
-    );
+    if (!(options.body instanceof FormData) && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+
+    if (token) {
+      headers.set(
+        "Authorization",
+        `${localStorage.getItem("tokenType") || "Bearer"} ${token}`
+      );
+    }
 
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       ...options,
       headers,
     });
+
+    if (response.status === 401 && authenticated) {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user");
+      localStorage.removeItem("tokenType");
+
+      if (window.location.pathname !== "/login") {
+        window.location.replace("/login");
+      }
+
+      throw {
+        message: "Sessão expirada. Faça login novamente.",
+        status: 401,
+      } satisfies ApiError;
+    }
 
     if (response.status === 204) return undefined as T;
 
@@ -69,11 +88,12 @@ export class API {
       endpoint,
       {
         method: "POST",
-        body: body instanceof FormData
-          ? body
-          : body !== undefined
-            ? JSON.stringify(body)
-            : undefined,
+        body:
+          body instanceof FormData
+            ? body
+            : body !== undefined
+              ? JSON.stringify(body)
+              : undefined,
       },
       authenticated
     );
@@ -93,7 +113,7 @@ export class API {
     });
   }
 
-  protected delete<T>(endpoint: string) {
+  protected delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: "DELETE" });
   }
 }
