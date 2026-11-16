@@ -5,41 +5,24 @@ export interface Feeder {
     name: string;
     description: string | null;
     timezone: string;
-    user: string;
-    active: boolean;
+    userId: string;
+    isActive: boolean;
     createdAt: string;
     updatedAt: string | null;
 }
 
 export interface FeederConfig {
     id: string;
-    type: "INTERVAL" | "DAILY_TIME";
+    type: FeederConfigType;
     intervalMinutes: number | null;
     timeOfDay: string | null;
-    weekdays: string[];
+    weekdays: Weekday[];
     dose: number;
     lastRunAt: string | null;
-    active: boolean;
+    isActive: boolean;
     feederId: string;
     createdAt: string;
     updatedAt: string | null;
-}
-
-export interface CreateFeederRequest {
-    deviceId: string;
-    name: string;
-    description?: string | null;
-    timezone?: string;
-    user?: string;
-}
-
-export interface UpdateFeederRequest {
-    name: string;
-    description?: string | null;
-}
-
-export interface UpdateFeederTimezoneRequest {
-    timezone: string;
 }
 
 export type FeederConfigType = "INTERVAL" | "DAILY_TIME";
@@ -52,6 +35,21 @@ export type Weekday =
     | "FRIDAY"
     | "SATURDAY"
     | "SUNDAY";
+
+export interface CreateFeederRequest {
+    deviceId: string;
+    name: string;
+    description?: string | null;
+}
+
+export interface UpdateFeederRequest {
+    name: string;
+    description?: string | null;
+}
+
+export interface UpdateFeederTimezoneRequest {
+    timezone: string;
+}
 
 export interface CreateFeederConfigRequest {
     type: FeederConfigType;
@@ -68,3 +66,26 @@ export interface UpdateFeederConfigRequest {
     weekdays?: Weekday[];
     dose: number;
 }
+
+
+export interface DeviceConfig {
+    deviceId: string;
+    feederId: string;
+    name: string;
+    timezone: string;
+    isActive: boolean;
+    configs: DeviceFeederConfig[];
+    serverTime: string;
+}
+
+export interface DeviceFeederConfig {
+    id: string;
+    type: FeederConfigType;
+    intervalMinutes: number | null;
+    timeOfDay: string | null;
+    weekdays: Weekday[];
+    dose: number;
+    lastRunAt: string | null;
+}
+
+export type FeederStatusRequest = Record<string, never>;

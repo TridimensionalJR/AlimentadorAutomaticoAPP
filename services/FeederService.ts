@@ -1,8 +1,11 @@
+
 import { API } from "./api";
 import type {
     Feeder,
+    CreateFeederRequest,
     UpdateFeederRequest,
     UpdateFeederTimezoneRequest,
+    DeviceConfig,
 } from "@/types/feeder";
 
 class FeederService extends API {
@@ -14,8 +17,12 @@ class FeederService extends API {
         return this.get<Feeder>(`/feeders/${id}`);
     }
 
-    findDevice(id: string) {
-        return this.get<Feeder>(`/feeders/${id}/device`);
+    create(data: CreateFeederRequest) {
+        return this.post<Feeder>("/feeders", data);
+    }
+
+    findDeviceConfig(deviceId: string) {
+        return this.get<DeviceConfig>(`/devices/${deviceId}/config`);
     }
 
     update(id: string, data: UpdateFeederRequest) {
