@@ -6,7 +6,7 @@ export interface Feeder {
     description: string | null;
     timezone: string;
     userId: string;
-    isActive: boolean;
+    active: boolean;
     createdAt: string;
     updatedAt: string | null;
 }
@@ -19,7 +19,7 @@ export interface FeederConfig {
     weekdays: Weekday[];
     dose: number;
     lastRunAt: string | null;
-    isActive: boolean;
+    active: boolean;
     feederId: string;
     createdAt: string;
     updatedAt: string | null;
@@ -73,7 +73,7 @@ export interface DeviceConfig {
     feederId: string;
     name: string;
     timezone: string;
-    isActive: boolean;
+    active: boolean;
     configs: DeviceFeederConfig[];
     serverTime: string;
 }
