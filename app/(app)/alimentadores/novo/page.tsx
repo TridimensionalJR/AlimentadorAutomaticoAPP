@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -6,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { BrowserQRCodeReader } from "@zxing/browser";
 import { z } from "zod";
 
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, RefreshCw } from "lucide-react";
 
 import Form from "@/components/Form/form";
 import { Button } from "@/components/ui/button";
@@ -19,8 +18,14 @@ type FeederForm = {
     description: string;
 };
 
+type ScannerControls = {
+    stop: () => void;
+};
+
 function isUuid(value: string) {
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        value
+    );
 }
 
 export default function NewFeeder() {
@@ -28,14 +33,17 @@ export default function NewFeeder() {
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const readerRef = useRef<BrowserQRCodeReader | null>(null);
-    const controlsRef = useRef<{ stop: () => void } | null>(null);
+    const controlsRef = useRef<ScannerControls | null>(null);
+
     const acceptedRef = useRef(false);
-    const scannerCancelledRef = useRef(false);
+    const cancelledRef = useRef(false);
+    const startingRef = useRef(false);
 
     const [step, setStep] = useState<"code" | "form">("code");
     const [deviceId, setDeviceId] = useState("");
     const [scanning, setScanning] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [scannerError, setScannerError] = useState("");
 
     const [values, setValues] = useState<FeederForm>({
         name: "",
@@ -43,25 +51,50 @@ export default function NewFeeder() {
     });
 
     const stopScanner = () => {
-        scannerCancelledRef.current = true;
+        cancelledRef.current = true;
 
         controlsRef.current?.stop();
         controlsRef.current = null;
+
+        readerRef.current = null;
+        startingRef.current = false;
+
+        const video = videoRef.current;
+
+        if (video?.srcObject instanceof MediaStream) {
+            video.srcObject.getTracks().forEach((track) => track.stop());
+            video.srcObject = null;
+        }
 
         setScanning(false);
     };
 
-    const acceptDeviceCode = (rawCode: string) => {
+    const acceptDeviceCode = (
+        rawCode: string,
+        controls?: ScannerControls
+    ) => {
         const code = rawCode.trim();
 
-        if (!isUuid(code) || acceptedRef.current) return;
+        if (acceptedRef.current || cancelledRef.current) {
+            return;
+        }
+
+        if (!isUuid(code)) {
+            return;
+        }
 
         acceptedRef.current = true;
 
+        controls?.stop();
         controlsRef.current?.stop();
+
         controlsRef.current = null;
+        readerRef.current = null;
+        startingRef.current = false;
 
         setScanning(false);
+        setScannerError("");
+
         setDeviceId(code.toLowerCase());
         setStep("form");
 
@@ -69,70 +102,111 @@ export default function NewFeeder() {
     };
 
     const startScanner = async () => {
-        if (!videoRef.current || scanning) return;
+        if (
+            !videoRef.current ||
+            startingRef.current ||
+            acceptedRef.current
+        ) {
+            return;
+        }
 
-        scannerCancelledRef.current = false;
-        acceptedRef.current = false;
+        cancelledRef.current = false;
+        startingRef.current = true;
+
+        setScanning(true);
+        setScannerError("");
 
         try {
-            setScanning(true);
+            const reader = new BrowserQRCodeReader();
 
-            readerRef.current = new BrowserQRCodeReader();
+            readerRef.current = reader;
 
-            const controls = await readerRef.current.decodeFromVideoDevice(
+            const controls = await reader.decodeFromVideoDevice(
                 undefined,
                 videoRef.current,
-                (result) => {
+                (result, error, callbackControls) => {
                     if (
-                        !result ||
-                        acceptedRef.current ||
-                        scannerCancelledRef.current
+                        cancelledRef.current ||
+                        acceptedRef.current
                     ) {
                         return;
                     }
 
-                    acceptDeviceCode(result.getText());
+                    if (result) {
+                        acceptDeviceCode(
+                            result.getText(),
+                            callbackControls
+                        );
+                    }
                 }
             );
 
-            if (scannerCancelledRef.current || acceptedRef.current) {
+            if (cancelledRef.current || acceptedRef.current) {
                 controls.stop();
                 return;
             }
 
             controlsRef.current = controls;
+            startingRef.current = false;
+
+            setScanning(true);
+
+            if (videoRef.current) {
+                videoRef.current.play().catch(() => {});
+            }
         } catch (error) {
+            startingRef.current = false;
             setScanning(false);
 
-            if (!scannerCancelledRef.current) {
-                toast.error(
+            if (!cancelledRef.current) {
+                console.error("[QR SCANNER] Erro:", error);
+
+                const message =
                     error instanceof Error
                         ? error.message
-                        : "Não foi possível acessar a câmera."
-                );
+                        : "Não foi possível acessar a câmera.";
+
+                setScannerError(message);
+                toast.error(message);
             }
         }
     };
 
     useEffect(() => {
-        if (step !== "code") return;
+        if (step !== "code") {
+            return;
+        }
+
+        cancelledRef.current = false;
+        acceptedRef.current = false;
+        startingRef.current = false;
 
         const timeout = window.setTimeout(() => {
             startScanner();
-        }, 100);
+        }, 300);
 
         return () => {
             window.clearTimeout(timeout);
 
-            scannerCancelledRef.current = true;
+            cancelledRef.current = true;
 
             controlsRef.current?.stop();
             controlsRef.current = null;
+
+            readerRef.current = null;
+            startingRef.current = false;
+
+            const video = videoRef.current;
+
+            if (video?.srcObject instanceof MediaStream) {
+                video.srcObject.getTracks().forEach((track) => track.stop());
+                video.srcObject = null;
+            }
         };
     }, [step]);
 
     const updateValue = (name: string, value: unknown) => {
-        setValues(current => ({
+        setValues((current) => ({
             ...current,
             [name]: value,
         }));
@@ -195,14 +269,64 @@ export default function NewFeeder() {
                         Escanear dispositivo
                     </h1>
 
-                    <div className="w-full overflow-hidden rounded-xl border bg-black">
+                    <div className="relative w-full overflow-hidden rounded-xl border bg-black">
                         <video
                             ref={videoRef}
-                            className="aspect-video max-h-[75vh] min-h-[350px] w-full object-cover sm:min-h-[450px] lg:min-h-[550px]"
+                            autoPlay
                             muted
                             playsInline
+                            className="aspect-video max-h-[75vh] min-h-[350px] w-full object-cover sm:min-h-[450px] lg:min-h-[550px]"
                         />
+
+                        {scanning && (
+                            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                <div className="relative aspect-square w-56 max-w-[70%]">
+                                    <div className="absolute inset-0 rounded-xl border-2 border-white/80" />
+
+                                    <div className="absolute -left-1 -top-1 h-6 w-6 rounded-tl-lg border-l-4 border-t-4 border-primary" />
+                                    <div className="absolute -right-1 -top-1 h-6 w-6 rounded-tr-lg border-r-4 border-t-4 border-primary" />
+                                    <div className="absolute -bottom-1 -left-1 h-6 w-6 rounded-bl-lg border-b-4 border-l-4 border-primary" />
+                                    <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-br-lg border-b-4 border-r-4 border-primary" />
+                                </div>
+                            </div>
+                        )}
                     </div>
+
+                    <p className="text-center text-sm text-muted-foreground">
+                        {scanning
+                            ? "Posicione o QR Code do dispositivo dentro da área de leitura."
+                            : scannerError
+                                ? "Não foi possível iniciar o scanner."
+                                : "Inicializando câmera..."}
+                    </p>
+
+                    {scannerError && (
+                        <div className="space-y-3">
+                            <p className="text-center text-sm text-destructive">
+                                {scannerError}
+                            </p>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => {
+                                    stopScanner();
+                                    acceptedRef.current = false;
+                                    cancelledRef.current = false;
+                                    startingRef.current = false;
+                                    setScannerError("");
+
+                                    window.setTimeout(() => {
+                                        startScanner();
+                                    }, 200);
+                                }}
+                            >
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Tentar novamente
+                            </Button>
+                        </div>
+                    )}
                 </section>
             </main>
         );
@@ -214,7 +338,12 @@ export default function NewFeeder() {
                 variant="ghost"
                 size="icon"
                 aria-label="Voltar para identificação"
-                onClick={() => setStep("code")}
+                onClick={() => {
+                    stopScanner();
+                    acceptedRef.current = false;
+                    setDeviceId("");
+                    setStep("code");
+                }}
             >
                 <ArrowLeft className="h-5 w-5" />
             </Button>
