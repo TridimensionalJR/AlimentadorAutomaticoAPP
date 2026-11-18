@@ -1,16 +1,14 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrowserQRCodeReader } from "@zxing/browser";
 import { z } from "zod";
-
-import { ArrowLeft, Check, RefreshCw } from "lucide-react";
-
+import { ArrowLeft, Check, RefreshCw, Keyboard, Camera } from "lucide-react";
 import Form from "@/components/Form/form";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-toastify";
-
 import { feederService } from "@/services/FeederService";
 
 type FeederForm = {
@@ -24,23 +22,23 @@ type ScannerControls = {
 
 function isUuid(value: string) {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        value
+        value.trim()
     );
 }
 
 export default function NewFeeder() {
     const router = useRouter();
-
     const videoRef = useRef<HTMLVideoElement>(null);
     const readerRef = useRef<BrowserQRCodeReader | null>(null);
     const controlsRef = useRef<ScannerControls | null>(null);
-
     const acceptedRef = useRef(false);
     const cancelledRef = useRef(false);
     const startingRef = useRef(false);
 
     const [step, setStep] = useState<"code" | "form">("code");
     const [deviceId, setDeviceId] = useState("");
+    const [manualCode, setManualCode] = useState("");
+    const [manualMode, setManualMode] = useState(false);
     const [scanning, setScanning] = useState(false);
     const [loading, setLoading] = useState(false);
     const [scannerError, setScannerError] = useState("");
@@ -52,10 +50,8 @@ export default function NewFeeder() {
 
     const stopScanner = () => {
         cancelledRef.current = true;
-
         controlsRef.current?.stop();
         controlsRef.current = null;
-
         readerRef.current = null;
         startingRef.current = false;
 
@@ -75,30 +71,43 @@ export default function NewFeeder() {
     ) => {
         const code = rawCode.trim();
 
-        if (acceptedRef.current || cancelledRef.current) {
-            return;
-        }
+        if (acceptedRef.current || cancelledRef.current) return;
 
         if (!isUuid(code)) {
             return;
         }
 
         acceptedRef.current = true;
-
         controls?.stop();
         controlsRef.current?.stop();
-
         controlsRef.current = null;
         readerRef.current = null;
         startingRef.current = false;
 
         setScanning(false);
         setScannerError("");
-
         setDeviceId(code.toLowerCase());
         setStep("form");
 
         toast.success("Dispositivo identificado.");
+    };
+
+    const handleManualCode = () => {
+        const code = manualCode.trim();
+
+        if (!code) {
+            toast.error("Informe o código UUID do dispositivo.");
+            return;
+        }
+
+        if (!isUuid(code)) {
+            toast.error("O código UUID informado é inválido.");
+            return;
+        }
+
+        acceptedRef.current = false;
+        cancelledRef.current = false;
+        acceptDeviceCode(code);
     };
 
     const startScanner = async () => {
@@ -112,25 +121,18 @@ export default function NewFeeder() {
 
         cancelledRef.current = false;
         startingRef.current = true;
-
         setScanning(true);
         setScannerError("");
 
         try {
             const reader = new BrowserQRCodeReader();
-
             readerRef.current = reader;
 
             const controls = await reader.decodeFromVideoDevice(
                 undefined,
                 videoRef.current,
                 (result, error, callbackControls) => {
-                    if (
-                        cancelledRef.current ||
-                        acceptedRef.current
-                    ) {
-                        return;
-                    }
+                    if (cancelledRef.current || acceptedRef.current) return;
 
                     if (result) {
                         acceptDeviceCode(
@@ -148,7 +150,6 @@ export default function NewFeeder() {
 
             controlsRef.current = controls;
             startingRef.current = false;
-
             setScanning(true);
 
             if (videoRef.current) {
@@ -173,7 +174,7 @@ export default function NewFeeder() {
     };
 
     useEffect(() => {
-        if (step !== "code") {
+        if (step !== "code" || manualMode) {
             return;
         }
 
@@ -187,12 +188,9 @@ export default function NewFeeder() {
 
         return () => {
             window.clearTimeout(timeout);
-
             cancelledRef.current = true;
-
             controlsRef.current?.stop();
             controlsRef.current = null;
-
             readerRef.current = null;
             startingRef.current = false;
 
@@ -203,7 +201,7 @@ export default function NewFeeder() {
                 video.srcObject = null;
             }
         };
-    }, [step]);
+    }, [step, manualMode]);
 
     const updateValue = (name: string, value: unknown) => {
         setValues((current) => ({
@@ -266,45 +264,68 @@ export default function NewFeeder() {
             <main className="w-full space-y-5 px-6 sm:px-6 lg:px-8">
                 <section className="w-full space-y-5">
                     <h1 className="text-xl tracking-tight">
-                        Escanear dispositivo
+                        Identificar dispositivo
                     </h1>
 
-                    <div className="relative w-full overflow-hidden rounded-xl border bg-black">
-                        <video
-                            ref={videoRef}
-                            autoPlay
-                            muted
-                            playsInline
-                            className="aspect-video max-h-[75vh] min-h-[350px] w-full object-cover sm:min-h-[450px] lg:min-h-[550px]"
-                        />
+                    {!manualMode ? (
+                        <>
+                            <div className="relative w-full overflow-hidden rounded-xl border bg-black">
+                                <video
+                                    ref={videoRef}
+                                    autoPlay
+                                    muted
+                                    playsInline
+                                    className="aspect-video max-h-[75vh] min-h-[350px] w-full object-cover sm:min-h-[450px] lg:min-h-[550px]"
+                                />
 
-                        {scanning && (
-                            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                                <div className="relative aspect-square w-56 max-w-[70%]">
-                                    <div className="absolute inset-0 rounded-xl border-2 border-white/80" />
-
-                                    <div className="absolute -left-1 -top-1 h-6 w-6 rounded-tl-lg border-l-4 border-t-4 border-primary" />
-                                    <div className="absolute -right-1 -top-1 h-6 w-6 rounded-tr-lg border-r-4 border-t-4 border-primary" />
-                                    <div className="absolute -bottom-1 -left-1 h-6 w-6 rounded-bl-lg border-b-4 border-l-4 border-primary" />
-                                    <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-br-lg border-b-4 border-r-4 border-primary" />
-                                </div>
+                                {scanning && (
+                                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                        <div className="relative aspect-square w-56 max-w-[70%]">
+                                            <div className="absolute inset-0 rounded-xl border-2 border-white/80" />
+                                            <div className="absolute -left-1 -top-1 h-6 w-6 rounded-tl-lg border-l-4 border-t-4 border-primary" />
+                                            <div className="absolute -right-1 -top-1 h-6 w-6 rounded-tr-lg border-r-4 border-t-4 border-primary" />
+                                            <div className="absolute -bottom-1 -left-1 h-6 w-6 rounded-bl-lg border-b-4 border-l-4 border-primary" />
+                                            <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-br-lg border-b-4 border-r-4 border-primary" />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
 
-                    <p className="text-center text-sm text-muted-foreground">
-                        {scanning
-                            ? "Posicione o QR Code do dispositivo dentro da área de leitura."
-                            : scannerError
-                                ? "Não foi possível iniciar o scanner."
-                                : "Inicializando câmera..."}
-                    </p>
-
-                    {scannerError && (
-                        <div className="space-y-3">
-                            <p className="text-center text-sm text-destructive">
-                                {scannerError}
+                            <p className="text-center text-sm text-muted-foreground">
+                                {scanning
+                                    ? "Posicione o QR Code do dispositivo dentro da área de leitura."
+                                    : scannerError
+                                      ? "Não foi possível iniciar o scanner."
+                                      : "Inicializando câmera..."}
                             </p>
+
+                            {scannerError && (
+                                <div className="space-y-3">
+                                    <p className="text-center text-sm text-destructive">
+                                        {scannerError}
+                                    </p>
+
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="w-full"
+                                        onClick={() => {
+                                            stopScanner();
+                                            acceptedRef.current = false;
+                                            cancelledRef.current = false;
+                                            startingRef.current = false;
+                                            setScannerError("");
+
+                                            window.setTimeout(() => {
+                                                startScanner();
+                                            }, 200);
+                                        }}
+                                    >
+                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                        Tentar novamente
+                                    </Button>
+                                </div>
+                            )}
 
                             <Button
                                 type="button"
@@ -312,18 +333,59 @@ export default function NewFeeder() {
                                 className="w-full"
                                 onClick={() => {
                                     stopScanner();
-                                    acceptedRef.current = false;
-                                    cancelledRef.current = false;
-                                    startingRef.current = false;
-                                    setScannerError("");
-
-                                    window.setTimeout(() => {
-                                        startScanner();
-                                    }, 200);
+                                    setManualMode(true);
+                                    setManualCode("");
                                 }}
                             >
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Tentar novamente
+                                <Keyboard className="mr-2 h-4 w-4" />
+                                Digitar código UUID
+                            </Button>
+                        </>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label
+                                    htmlFor="device-uuid"
+                                    className="text-sm font-medium"
+                                >
+                                    Código UUID do dispositivo
+                                </label>
+
+                                <input
+                                    id="device-uuid"
+                                    type="text"
+                                    value={manualCode}
+                                    onChange={(event) =>
+                                        setManualCode(event.target.value)
+                                    }
+                                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                                    maxLength={36}
+                                    autoComplete="off"
+                                    spellCheck={false}
+                                    className="h-11 w-full rounded-md border bg-background px-3 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                />
+                            </div>
+
+                            <Button
+                                type="button"
+                                className="w-full"
+                                onClick={handleManualCode}
+                            >
+                                <Check className="mr-2 h-4 w-4" />
+                                Confirmar código
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => {
+                                    setManualMode(false);
+                                    setManualCode("");
+                                }}
+                            >
+                                <Camera className="mr-2 h-4 w-4" />
+                                Voltar para câmera
                             </Button>
                         </div>
                     )}
